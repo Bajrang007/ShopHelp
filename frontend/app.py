@@ -13,15 +13,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import google.generativeai as genai
 from dotenv import load_dotenv
-from backend.rag import search_policy
 import subprocess
 
 # Build the ChromaDB index on first run if it doesn't exist yet
-# (needed for cloud deployment, since chroma_db/ is gitignored)
+# (needed for cloud deployment, since chroma_db/ is gitignored).
+# This MUST run before importing backend.rag, since rag.py connects
+# to the collection at import time -- if the index doesn't exist yet,
+# that import will crash.
 _chroma_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend", "chroma_db")
 if not os.path.exists(_chroma_path):
     _build_script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend", "build_index.py")
     subprocess.run([sys.executable, _build_script], check=True)
+
+from backend.rag import search_policy
 from backend.memory import save_session, load_session
 from backend.tracing import log_turn
 from backend.escalation import should_escalate
