@@ -18,6 +18,13 @@ load_dotenv()
 
 
 def get_conn():
+    """
+    Uses Neon (hosted) if NEON_DATABASE_URL is set, otherwise
+    falls back to local Docker Postgres.
+    """
+    neon_url = os.getenv("NEON_DATABASE_URL")
+    if neon_url:
+        return psycopg2.connect(neon_url)
     return psycopg2.connect(
         host=os.getenv("POSTGRES_HOST"),
         port=os.getenv("POSTGRES_PORT"),

@@ -22,8 +22,15 @@ load_dotenv()
 
 # ── DB connection helper ──────────────────────────────────────────────────────
 def get_conn():
-    """Return a fresh psycopg2 connection. Called inside each tool so we
-    never hold a connection open between agent turns."""
+    """
+    Return a fresh psycopg2 connection.
+    Uses Neon (hosted) if NEON_DATABASE_URL is set -- this is how
+    Streamlit Cloud deployment connects. Falls back to local Docker
+    Postgres settings otherwise.
+    """
+    neon_url = os.getenv("NEON_DATABASE_URL")
+    if neon_url:
+        return psycopg2.connect(neon_url)
     return psycopg2.connect(
         host=os.getenv("POSTGRES_HOST"),
         port=os.getenv("POSTGRES_PORT"),
