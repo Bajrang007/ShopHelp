@@ -20,7 +20,8 @@ import subprocess
 # (needed for cloud deployment, since chroma_db/ is gitignored)
 _chroma_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend", "chroma_db")
 if not os.path.exists(_chroma_path):
-    subprocess.run(["python", "backend/build_index.py"], check=True)
+    _build_script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend", "build_index.py")
+    subprocess.run([sys.executable, _build_script], check=True)
 from backend.memory import save_session, load_session
 from backend.tracing import log_turn
 from backend.escalation import should_escalate
@@ -33,7 +34,15 @@ from backend.tools import (
 )
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# On Streamlit Cloud, secrets come from st.secrets, not .env.
+# Locally, they come from .env. This makes both work.
+def get_secret(key):
+    if key in st.secrets:
+        return st.secrets[key]
+    return os.getenv(key)
+
+genai.configure(api_key=get_secret("GEMINI_API_KEY"))
 
 MAX_STEPS = 8
 
@@ -207,6 +216,12 @@ st.set_page_config(
     page_icon="🛍️",
     layout="wide",
 )
+
+# Push Streamlit secrets into os.environ so tools.py/memory.py
+# (which use os.getenv directly) can find them too.
+for key in ["NEON_DATABASE_URL", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]:
+    if key in st.secrets and not os.getenv(key):
+        os.environ[key] = st.secrets[key]
 
 st.title("🛍️ ShopFlow Customer Support")
 st.caption("Powered by an agentic AI — ask about your orders, returns, refunds, or policies.")
